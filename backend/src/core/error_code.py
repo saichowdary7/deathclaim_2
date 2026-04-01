@@ -1,0 +1,5 @@
+class ErrorCode:
+    INTERNAL_ERROR = "GEN_001"
+    NOT_FOUND = "GEN_002"
+    VALIDATION_ERROR = "GEN_003"
+    DB_ERROR = "DB_001"

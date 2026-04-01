@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 
 const TABS = [
   { id: 'tab-1', label: 'Checklists' },
-  { id: 'tab-2', label: 'Document Management' },
+  { id: 'tab-2', label: 'Claim Party' },
   // { id: 'tab-3', label: 'Medical Details' },
   // { id: 'tab-4', label: 'Policy Details' },
   // { id: 'tab-5', label: 'Beneficiary Info' },
@@ -18,9 +18,11 @@ const TABS = [
 interface SidebarProps {
   activeTab: string | null;
   onSelectTab: (tabId: string) => void;
+  collapsed: boolean;
+  onToggleCollapse: () => void;
 }
 
-export default function Sidebar({ activeTab, onSelectTab }: SidebarProps) {
+export default function Sidebar({ activeTab, onSelectTab, collapsed, onToggleCollapse }: SidebarProps) {
   const [masterOpen, setMasterOpen] = useState(true);
   const router = useRouter();
 
@@ -32,10 +34,13 @@ export default function Sidebar({ activeTab, onSelectTab }: SidebarProps) {
     router.push('/login');
   };
 
+  const sidebarWidth = collapsed ? 70 : 220;
+
   return (
     <div
       style={{
-        width: '220px',
+        width: `${sidebarWidth}px`,
+        minWidth: `${sidebarWidth}px`,
         background: '#0f172a',
         display: 'flex',
         flexDirection: 'column',
@@ -45,27 +50,44 @@ export default function Sidebar({ activeTab, onSelectTab }: SidebarProps) {
         height: '100vh',
         boxShadow: '2px 0 16px rgba(0,0,0,0.25)',
         zIndex: 100,
+        transition: 'width 0.2s ease',
       }}
     >
       {/* Admin Header */}
-      <div style={{ padding: '20px 16px 16px', borderBottom: '1px solid #1e293b' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-          <div
+      <div style={{ padding: '14px 10px', borderBottom: '1px solid #1e293b' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <div
+              style={{
+                width: '36px', height: '36px', borderRadius: '50%',
+                background: '#10b981', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                flexShrink: 0,
+              }}
+            >
+              <svg width="18" height="18" fill="none" stroke="white" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                  d="M5.121 17.804A13.937 13.937 0 0112 15c2.515 0 4.87.69 6.879 1.804M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+              </svg>
+            </div>
+            {!collapsed && (
+              <div>
+                <p style={{ margin: 0, fontSize: '13px', fontWeight: 700, color: '#f1f5f9' }}>Admin</p>
+                <p style={{ margin: 0, fontSize: '11px', color: '#64748b' }}>Death Claim</p>
+              </div>
+            )}
+          </div>
+          <button
+            onClick={onToggleCollapse}
+            title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
             style={{
-              width: '36px', height: '36px', borderRadius: '50%',
-              background: '#10b981', display: 'flex', alignItems: 'center', justifyContent: 'center',
-              flexShrink: 0,
+              border: 'none', background: 'transparent', color: '#94a3b8', cursor: 'pointer',
+              width: '24px', height: '24px', borderRadius: '6px', display: 'grid', placeItems: 'center',
             }}
           >
-            <svg width="18" height="18" fill="none" stroke="white" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                d="M5.121 17.804A13.937 13.937 0 0112 15c2.515 0 4.87.69 6.879 1.804M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-            </svg>
-          </div>
-          <div>
-            <p style={{ margin: 0, fontSize: '13px', fontWeight: 700, color: '#f1f5f9' }}>Admin</p>
-            <p style={{ margin: 0, fontSize: '11px', color: '#64748b' }}>Death Claim</p>
-          </div>
+            <span style={{ fontSize: '14px', fontWeight: 700, display: 'block' }}>
+              {collapsed ? '☰' : '⏶'}
+            </span>
+          </button>
         </div>
       </div>
 
@@ -77,19 +99,22 @@ export default function Sidebar({ activeTab, onSelectTab }: SidebarProps) {
           onClick={handleMasterClick}
           style={{
             width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-            padding: '9px 16px', background: masterOpen ? '#1e293b' : 'transparent',
+            padding: collapsed ? '9px' : '9px 16px', background: masterOpen ? '#1e293b' : 'transparent',
             border: 'none', cursor: 'pointer', borderLeft: masterOpen ? '3px solid #3b82f6' : '3px solid transparent',
             transition: 'all 0.2s',
           }}
+          title="Toggle Master Death Claim"
         >
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: collapsed ? '0px' : '8px' }}>
             <svg width="15" height="15" fill="none" stroke={masterOpen ? '#3b82f6' : '#94a3b8'} viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
                 d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
             </svg>
-            <span style={{ fontSize: '13px', fontWeight: 600, color: masterOpen ? '#f1f5f9' : '#94a3b8' }}>
-              Master Death Claim
-            </span>
+            {!collapsed && (
+              <span style={{ fontSize: '13px', fontWeight: 600, color: masterOpen ? '#f1f5f9' : '#94a3b8' }}>
+                Master Death Claim
+              </span>
+            )}
           </div>
           <svg
             width="12" height="12" fill="none" stroke="#64748b" viewBox="0 0 24 24"
@@ -108,16 +133,18 @@ export default function Sidebar({ activeTab, onSelectTab }: SidebarProps) {
                 <button
                   key={tab.id}
                   onClick={() => onSelectTab(tab.id)}
+                  title={tab.label}
                   style={{
                     width: '100%',
                     textAlign: 'left',
-                    padding: '8px 16px 8px 32px',
+                    padding: collapsed ? '8px 8px' : '8px 16px 8px 32px',
                     border: 'none',
                     borderLeft: isActive ? '3px solid #3b82f6' : '3px solid transparent',
                     background: isActive ? '#1e3a5f' : 'transparent',
                     cursor: 'pointer',
                     display: 'flex',
                     alignItems: 'center',
+                    justifyContent: collapsed ? 'center' : 'flex-start',
                     gap: '8px',
                     transition: 'all 0.15s',
                   }}
@@ -132,9 +159,11 @@ export default function Sidebar({ activeTab, onSelectTab }: SidebarProps) {
                   }}>
                     {idx + 1}
                   </span>
-                  <span style={{ fontSize: '12px', fontWeight: isActive ? 600 : 400, color: isActive ? '#f1f5f9' : '#94a3b8' }}>
-                    {tab.label}
-                  </span>
+                  {!collapsed && (
+                    <span style={{ fontSize: '12px', fontWeight: isActive ? 600 : 400, color: isActive ? '#f1f5f9' : '#94a3b8' }}>
+                      {tab.label}
+                    </span>
+                  )}
                 </button>
               );
             })}

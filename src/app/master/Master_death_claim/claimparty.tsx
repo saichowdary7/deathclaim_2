@@ -1,25 +1,29 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import { getChecklists, createChecklist, updateChecklist, deleteChecklist, Checklist } from '@/lib/master/checklist';
+import { getParties, createParty, updateParty, deleteParty, Party } from '@/lib/master/party';
 
 const STATUSES = ['ACTIVE', 'INACTIVE', 'DEPRECATED'];
-const USERS = ['admin', 'john.doe', 'jane.smith', 'system', 'ops.team'];
+const PARTY_TYPES = ['Individual', 'Organization', 'Government', 'Trust'];
+const GENDERS = ['Male', 'Female', 'Other', 'Prefer not to say'];
 
 const PAGE_SIZE = 10;
 
 const COLUMNS = [
-  { key: 'id', label: 'Id' },
-  { key: 'checklist_name', label: 'Checklist Name' },
-  { key: 'checklist_type', label: 'Checklist Type' },
-  { key: 'checklist_category', label: 'Checklist Category' },
-  { key: 'checklist_description', label: 'Description' },
-  { key: 'when_required', label: 'When Required' },
+  { key: 'party_id', label: 'Party ID' },
+  { key: 'party_type', label: 'Party Type' },
+  { key: 'first_name', label: 'First Name' },
+  { key: 'last_name', label: 'Last Name' },
+  { key: 'gender', label: 'Gender' },
+  { key: 'date_of_birth', label: 'Date of Birth' },
+  { key: 'contact_number', label: 'Contact' },
+  { key: 'email', label: 'Email' },
+  { key: 'national_id', label: 'National ID' },
   { key: 'effective_start_date', label: 'Effective Date' },
   { key: 'effective_end_date', label: 'End Date' },
+  { key: 'version', label: 'Version' },
   { key: 'status', label: 'Status' },
 ];
-
 
 const STATUS_STYLES: Record<string, { color: string; bg: string; border: string }> = {
   ACTIVE: { color: '#15803d', bg: '#dcfce7', border: '#bbf7d0' },
@@ -28,11 +32,6 @@ const STATUS_STYLES: Record<string, { color: string; bg: string; border: string 
 };
 
 // ── Icons ──────────────────────────────────────────────────────────
-const EyeIcon = () => (
-  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" /><circle cx="12" cy="12" r="3" />
-  </svg>
-);
 const EditIcon = () => (
   <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
     <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
@@ -82,11 +81,11 @@ const ChevRight = () => (
   </svg>
 );
 
-export default function Tab1() {
-  const [data, setData] = useState<Checklist[]>([]);
+export default function PartyTab() {
+  const [data, setData] = useState<Party[]>([]);
   const [page, setPage] = useState(1);
   const [toast, setToast] = useState<string | null>(null);
-  const [selectedRow, setSelectedRow] = useState<Checklist | null>(null);
+  const [selectedRow, setSelectedRow] = useState<Party | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<number | null>(null);
   const [showAddModal, setShowAddModal] = useState(false);
   const [showUploadModal, setShowUploadModal] = useState(false);
@@ -100,15 +99,16 @@ export default function Tab1() {
 
   const fetchData = async () => {
     try {
-      const result = await getChecklists();
-      setData(result);
+      const result = await getParties();
+      setData(Array.isArray(result) ? result : []);
     } catch (err) {
       showToast('Error fetching data');
+      setData([]);
     }
   };
 
   const totalPages = Math.ceil(data.length / PAGE_SIZE);
-  const paged = data.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+  const paged = Array.isArray(data) ? data.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE) : [];
 
   const showToast = (msg: string) => {
     setToast(msg);
@@ -117,7 +117,6 @@ export default function Tab1() {
 
   const formatDate = (value?: string | null) => {
     if (!value) return '-';
-    // Attempt to parse yyyy-mm-dd, yyyy-mm-ddTHH:MM:SS, or Date string
     const date = new Date(value);
     if (!isNaN(date.getTime())) {
       const mm = String(date.getMonth() + 1).padStart(2, '0');
@@ -134,52 +133,93 @@ export default function Tab1() {
     return value;
   };
 
+  const formatGender = (gender?: string | null) => {
+    if (!gender) return '-';
+    switch (gender) {
+      case 'M':
+        return 'Male';
+      case 'F':
+        return 'Female';
+      case 'UNKNOWN':
+        return 'Other';
+      default:
+        return gender;
+    }
+  };
+
   const formatStatus = (status?: string | null) => {
     if (!status) return '-';
     return `${status.slice(0, 1).toUpperCase()}${status.slice(1).toLowerCase()}`;
   };
 
+  const backendToFrontendGender = (gender?: string | null) => {
+    if (!gender) return '';
+    switch (gender) {
+      case 'M':
+        return 'Male';
+      case 'F':
+        return 'Female';
+      case 'UNKNOWN':
+        return 'Other';
+      default:
+        return gender;
+    }
+  };
+
   const handleDelete = async (id: number) => {
     try {
-      await deleteChecklist(id);
-      setData(prev => prev.filter(r => r.id !== id));
+      await deleteParty(id);
+      setData(prev => prev.filter(r => r.party_id !== id));
       showToast(`Record #${id} deleted successfully.`);
       setConfirmDelete(null);
-      if (selectedRow?.id === id) setSelectedRow(null);
+      if (selectedRow?.party_id === id) setSelectedRow(null);
     } catch (err) {
       showToast('Failed to delete');
     }
   };
 
-  const handleEdit = (row: Checklist) => setSelectedRow(row);
+  const handleEdit = (row: Party) => setSelectedRow(row);
 
   const handleSave = async (e: React.FormEvent<HTMLFormElement>, id?: number) => {
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
     const payload: any = {};
-
-    // Remove empty strings so Pydantic doesn't fail on dates
     formData.forEach((value, key) => {
-      if (value !== "" && key !== 'id') {
+      if (value !== '' && key !== 'party_id') {
         payload[key] = value;
       }
     });
 
-    console.log("SENDING TO BACKEND:", payload);
+    // Convert gender values to backend format
+    if (payload.gender) {
+      switch (payload.gender) {
+        case 'Male':
+          payload.gender = 'M';
+          break;
+        case 'Female':
+          payload.gender = 'F';
+          break;
+        case 'Other':
+        case 'Prefer not to say':
+          payload.gender = 'UNKNOWN';
+          break;
+      }
+    }
 
+    console.log('SENDING TO BACKEND:', payload);
     try {
       if (id) {
-        await updateChecklist(id, payload as Partial<Checklist>);
-        showToast("Record updated successfully.");
+        await updateParty(id, payload as Partial<Party>);
+        showToast('Record updated successfully.');
       } else {
-        await createChecklist(payload as Checklist);
-        showToast("New checklist added.");
+        await createParty(payload as Party);
+        showToast('New party added.');
       }
       fetchData();
       setSelectedRow(null);
       setShowAddModal(false);
     } catch (err: any) {
-      console.error("API ERROR:", err);
+      console.error('API ERROR:', err);
       showToast('Error saving record: ' + (err.message || 'Check terminal'));
     }
   };
@@ -187,14 +227,15 @@ export default function Tab1() {
   const handleExport = () => {
     const header = COLUMNS.map(c => c.label).join(',');
     const rows = data.map(r =>
-      [r.id, `"${r.checklist_name}"`, r.checklist_type, r.checklist_category,
-      `"${r.checklist_description}"`, r.when_required,
-      formatDate(r.effective_start_date), formatDate(r.effective_end_date),
-      formatStatus(r.status)].join(',')
+      [r.party_id, r.party_type, `"${r.first_name}"`, `"${r.last_name}"`,
+        formatGender(r.gender), formatDate(r.date_of_birth), r.contact_number,
+        r.email, r.national_id,
+        formatDate(r.effective_start_date), formatDate(r.effective_end_date),
+        r.version, formatStatus(r.status)].join(',')
     );
     const blob = new Blob([[header, ...rows].join('\n')], { type: 'text/csv' });
     const url = URL.createObjectURL(blob);
-    const a = Object.assign(document.createElement('a'), { href: url, download: 'checklist_export.csv' });
+    const a = Object.assign(document.createElement('a'), { href: url, download: 'party_export.csv' });
     a.click(); URL.revokeObjectURL(url);
     showToast('Export started.');
   };
@@ -203,13 +244,11 @@ export default function Tab1() {
     const header = COLUMNS.map(c => c.key).join(',');
     const blob = new Blob([header], { type: 'text/csv' });
     const url = URL.createObjectURL(blob);
-    const a = Object.assign(document.createElement('a'), { href: url, download: 'checklist_template.csv' });
+    const a = Object.assign(document.createElement('a'), { href: url, download: 'party_template.csv' });
     a.click(); URL.revokeObjectURL(url);
     showToast('Template downloaded.');
   };
 
-
-  // Reusable icon-only button
   const ActionBtn = ({
     title, icon, color, bg, border, hoverBg, onClick,
   }: {
@@ -248,11 +287,20 @@ export default function Tab1() {
     borderBottom: '2px solid #e2e8f0',
   };
 
+  const inputStyle: React.CSSProperties = {
+    width: '100%', padding: '10px 14px', fontSize: 13,
+    border: '1px solid #cbd5e1', borderRadius: 8, outline: 'none', color: '#1e293b',
+  };
+
+  const labelStyle: React.CSSProperties = {
+    display: 'block', fontSize: 13, fontWeight: 600, color: '#334155', marginBottom: 8,
+  };
+
   return (
     <div style={{ padding: '8px 20px 16px', position: 'relative', zIndex: 1 }}>
       <div style={{
         position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-        background: '#ffffff', zIndex: -1
+        background: '#ffffff', zIndex: -1,
       }} />
 
       {/* Toast */}
@@ -270,20 +318,17 @@ export default function Tab1() {
       {/* Page header */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
         <div>
-          <h2 style={{ fontSize: 18, fontWeight: 700, color: '#0f172a', margin: 0 }}>Master CheckLists</h2>
-          <p style={{ fontSize: 12, color: '#64748b', margin: '2px 0 0' }}>Manage and review all claim checklists</p>
+          <h2 style={{ fontSize: 18, fontWeight: 700, color: '#0f172a', margin: 0 }}>Master Party</h2>
+          <p style={{ fontSize: 12, color: '#64748b', margin: '2px 0 0' }}>Manage and review all claim parties</p>
         </div>
 
         {/* Toolbar */}
         <div style={{ display: 'flex', gap: 10 }}>
-          <input ref={fileRef} type="file" accept=".xlsx,.xls,.csv" style={{ display: 'none' }}
-            onChange={() => showToast('File uploaded successfully.')} />
-
           {([
             { label: 'Upload Excel', icon: <UploadIcon />, onClick: () => setShowUploadModal(true), dark: false },
             { label: 'Template', icon: <TemplateIcon />, onClick: handleTemplate, dark: false },
             { label: 'Export', icon: <ExportIcon />, onClick: handleExport, dark: false },
-            { label: 'Add new checklist', icon: <PlusIcon />, onClick: () => setShowAddModal(true), dark: true },
+            { label: 'Add New Party', icon: <PlusIcon />, onClick: () => setShowAddModal(true), dark: true },
           ] as const).map(btn => (
             <button
               key={btn.label}
@@ -323,22 +368,23 @@ export default function Tab1() {
 
                 return (
                   <tr
-                    key={row.id}
+                    key={row.party_id}
                     style={{ background: rowBg, borderBottom: '1px solid #e2e8f0', transition: 'background 0.1s' }}
                     onMouseEnter={e => (e.currentTarget.style.background = '#f8fafc')}
                     onMouseLeave={e => (e.currentTarget.style.background = rowBg)}
                   >
-                    <td style={tdBase}>{row.id}</td>
-                    <td style={{ ...tdBase, whiteSpace: 'normal', minWidth: 170 }}>{row.checklist_name}</td>
-                    <td style={tdBase}>{row.checklist_type}</td>
-                    <td style={tdBase}>{row.checklist_category}</td>
-                    <td style={{ ...tdBase, maxWidth: 230, overflow: 'hidden', textOverflow: 'ellipsis' }}
-                      title={row.checklist_description}>
-                      {row.checklist_description}
-                    </td>
-                    <td style={tdBase}>{row.when_required}</td>
+                    <td style={tdBase}>{row.party_id}</td>
+                    <td style={tdBase}>{row.party_type}</td>
+                    <td style={tdBase}>{row.first_name}</td>
+                    <td style={tdBase}>{row.last_name}</td>
+                    <td style={tdBase}>{formatGender(row.gender)}</td>
+                    <td style={tdBase}>{formatDate(row.date_of_birth)}</td>
+                    <td style={tdBase}>{row.contact_number}</td>
+                    <td style={{ ...tdBase, maxWidth: 180, overflow: 'hidden', textOverflow: 'ellipsis' }} title={row.email}>{row.email}</td>
+                    <td style={tdBase}>{row.national_id}</td>
                     <td style={tdBase}>{formatDate(row.effective_start_date)}</td>
                     <td style={tdBase}>{formatDate(row.effective_end_date)}</td>
+                    <td style={tdBase}>{row.version ?? '-'}</td>
                     <td style={{ ...tdBase }}>
                       <span style={{
                         display: 'inline-block', padding: '3px 10px',
@@ -349,11 +395,10 @@ export default function Tab1() {
                       </span>
                     </td>
 
-                    {/* Icon-only actions */}
                     <td style={{ ...tdBase, textAlign: 'center' }}>
                       <div style={{ display: 'flex', gap: 6, justifyContent: 'center' }}>
                         <ActionBtn title="Edit / View" icon={<EditIcon />} color="#15803d" bg="#dcfce7" border="#bbf7d0" hoverBg="#bbf7d0" onClick={() => handleEdit(row)} />
-                        <ActionBtn title="Delete" icon={<TrashIcon />} color="#b91c1c" bg="#fee2e2" border="#fecaca" hoverBg="#fecaca" onClick={() => row.id && setConfirmDelete(row.id)} />
+                        <ActionBtn title="Delete" icon={<TrashIcon />} color="#b91c1c" bg="#fee2e2" border="#fecaca" hoverBg="#fecaca" onClick={() => row.party_id && setConfirmDelete(row.party_id)} />
                       </div>
                     </td>
                   </tr>
@@ -419,203 +464,377 @@ export default function Tab1() {
         </div>
       </div>
 
-      {/* View/Edit Modal */}
+      {/* ── Edit Modal ─────────────────────────────────────────────── */}
       {selectedRow && (
         <div style={{
           position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
           background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center',
-          justifyContent: 'center', zIndex: 99999, backdropFilter: 'blur(3px)'
+          justifyContent: 'center', zIndex: 99999, backdropFilter: 'blur(3px)',
         }} onClick={() => setSelectedRow(null)}>
           <div style={{
-            background: '#fff', width: '90%', maxWidth: 460, borderRadius: 12,
-            display: 'flex', flexDirection: 'column', maxHeight: '84vh',
+            background: '#fff', width: '90%', maxWidth: 520, borderRadius: 12,
+            display: 'flex', flexDirection: 'column', maxHeight: '88vh',
             overflow: 'hidden', boxShadow: '0 20px 40px -10px rgba(0,0,0,0.2)',
           }} onClick={e => e.stopPropagation()}>
-            {/* Modal Header */}
             <div style={{ padding: '18px 28px 14px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0, background: 'linear-gradient(90deg, #1e40af 0%, #2563eb 100%)' }}>
-              <h3 style={{ margin: 0, fontSize: 20, fontWeight: 700, color: '#fff' }}>Edit Checklist</h3>
-              <button onClick={() => setShowAddModal(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 24, color: '#fff' }}>&times;</button>
+              <h3 style={{ margin: 0, fontSize: 20, fontWeight: 700, color: '#fff' }}>Edit Party</h3>
+              <button onClick={() => setSelectedRow(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 24, color: '#fff' }}>&times;</button>
             </div>
 
-            <form onSubmit={(e) => handleSave(e, selectedRow.id)} style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
-              {/* Modal Scrollable Body */}
+            <form onSubmit={(e) => handleSave(e, selectedRow.party_id)} style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
               <div style={{ padding: '0 32px', flex: 1, overflowY: 'auto', minHeight: 0 }}>
                 <div style={{ height: 1.5, background: '#f1f5f9', margin: '0 -32px 24px' }} />
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px 24px', paddingBottom: 24 }}>
-                  {[
-                    { l: 'ID', n: 'id', v: selectedRow.id, readOnly: true },
-                    { l: 'Checklist Name', n: 'checklist_name', v: selectedRow.checklist_name, span2: true },
-                    { l: 'Checklist Type', n: 'checklist_type', v: selectedRow.checklist_type },
-                    { l: 'Category', n: 'checklist_category', v: selectedRow.checklist_category },
-                    { l: 'When Required', n: 'when_required', v: selectedRow.when_required },
-                    { l: 'Checklist Version', n: 'checklist_version', v: selectedRow.checklist_version },
-                    { l: 'Effective Date', n: 'effective_start_date', v: selectedRow.effective_start_date, type: 'date' },
-                    { l: 'End Date', n: 'effective_end_date', v: selectedRow.effective_end_date, type: 'date' },
-                    { l: 'Updated By', n: 'updated_by', v: selectedRow.updated_by },
-                    { l: 'Status', n: 'status', v: selectedRow.status, isStatus: true },
-                    { l: 'Description', n: 'checklist_description', v: selectedRow.checklist_description, span2: true, isTextarea: true },
-                  ].map(item => (
-                    <div key={item.l} style={{ gridColumn: item.span2 ? 'span 2' : 'auto' }}>
-                      <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#334155', marginBottom: 8 }}>{item.l}</label>
-                      {item.isStatus ? (
-                        <div style={{ position: 'relative' }}>
-                          <select name={item.n} defaultValue={String(item.v)} style={{ width: '100%', padding: '10px 14px', fontSize: 13, border: '1px solid #cbd5e1', borderRadius: 8, outline: 'none', color: '#1e293b', appearance: 'none', background: '#fff' }}>
-                            {STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
-                          </select>
-                          <div style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none', color: '#64748b' }}>
-                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9" /></svg>
-                          </div>
-                        </div>
-                      ) : item.isTextarea ? (
-                        <textarea name={item.n} rows={3} defaultValue={String(item.v)} style={{ width: '100%', padding: '10px 14px', fontSize: 13, border: '1px solid #cbd5e1', borderRadius: 8, outline: 'none', resize: 'none', color: '#1e293b' }} />
-                      ) : (
-                        <input name={item.n} type={item.type || "text"} defaultValue={String(item.v || '')} readOnly={item.readOnly} style={{ width: '100%', padding: '10px 14px', fontSize: 13, border: '1px solid #cbd5e1', borderRadius: 8, outline: 'none', color: '#1e293b', background: item.readOnly ? '#f8fafc' : '#fff' }} />
-                      )}
+
+                  {/* Party ID - read only */}
+                  <div>
+                    <label style={labelStyle}>Party ID</label>
+                    <input name="party_id" type="text" defaultValue={String(selectedRow.party_id || '')} readOnly style={{ ...inputStyle, background: '#f8fafc' }} />
+                  </div>
+
+                  {/* Party Type */}
+                  <div>
+                    <label style={labelStyle}>Party Type</label>
+                    <div style={{ position: 'relative' }}>
+                      <select name="party_type" defaultValue={selectedRow.party_type || ''} style={{ ...inputStyle, appearance: 'none', background: '#fff' }}>
+                        <option value="">Select type...</option>
+                        {PARTY_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
+                      </select>
+                      <div style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none', color: '#64748b' }}>
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9" /></svg>
+                      </div>
                     </div>
-                  ))}
+                  </div>
+
+                  {/* First Name */}
+                  <div>
+                    <label style={labelStyle}>First Name</label>
+                    <input name="first_name" type="text" defaultValue={selectedRow.first_name || ''} style={inputStyle} />
+                  </div>
+
+                  {/* Last Name */}
+                  <div>
+                    <label style={labelStyle}>Last Name</label>
+                    <input name="last_name" type="text" defaultValue={selectedRow.last_name || ''} style={inputStyle} />
+                  </div>
+
+                  {/* Gender */}
+                  <div>
+                    <label style={labelStyle}>Gender</label>
+                    <div style={{ position: 'relative' }}>
+                      <select name="gender" defaultValue={backendToFrontendGender(selectedRow.gender)} style={{ ...inputStyle, appearance: 'none', background: '#fff' }}>
+                        <option value="">Select gender...</option>
+                        {GENDERS.map(g => <option key={g} value={g}>{g}</option>)}
+                      </select>
+                      <div style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none', color: '#64748b' }}>
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9" /></svg>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Date of Birth */}
+                  <div>
+                    <label style={labelStyle}>Date of Birth</label>
+                    <input name="date_of_birth" type="date" defaultValue={selectedRow.date_of_birth || ''} style={inputStyle} />
+                  </div>
+
+                  {/* Contact Number */}
+                  <div>
+                    <label style={labelStyle}>Contact Number</label>
+                    <input name="contact_number" type="text" defaultValue={selectedRow.contact_number || ''} style={inputStyle} />
+                  </div>
+
+                  {/* Email */}
+                  <div>
+                    <label style={labelStyle}>Email</label>
+                    <input name="email" type="email" defaultValue={selectedRow.email || ''} style={inputStyle} />
+                  </div>
+
+                  {/* Address - span 2 */}
+                  <div style={{ gridColumn: 'span 2' }}>
+                    <label style={labelStyle}>Address</label>
+                    <textarea name="address" rows={2} defaultValue={selectedRow.address || ''} style={{ ...inputStyle, resize: 'none' }} />
+                  </div>
+
+                  {/* National ID */}
+                  <div>
+                    <label style={labelStyle}>National ID</label>
+                    <input name="national_id" type="text" defaultValue={selectedRow.national_id || ''} style={inputStyle} />
+                  </div>
+
+                  {/* SSN */}
+                  <div>
+                    <label style={labelStyle}>SSN</label>
+                    <input name="ssn" type="text" defaultValue={selectedRow.ssn || ''} style={inputStyle} />
+                  </div>
+
+                  {/* Effective Date */}
+                  <div>
+                    <label style={labelStyle}>Effective Date</label>
+                    <input name="effective_start_date" type="date" defaultValue={selectedRow.effective_start_date || ''} style={inputStyle} />
+                  </div>
+
+                  {/* End Date */}
+                  <div>
+                    <label style={labelStyle}>End Date</label>
+                    <input name="effective_end_date" type="date" defaultValue={selectedRow.effective_end_date || ''} style={inputStyle} />
+                  </div>
+
+                  {/* Version */}
+                  <div>
+                    <label style={labelStyle}>Version</label>
+                    <input name="version" type="number" defaultValue={selectedRow.version ?? ''} style={inputStyle} />
+                  </div>
+
+                  {/* Status */}
+                  <div>
+                    <label style={labelStyle}>Status</label>
+                    <div style={{ position: 'relative' }}>
+                      <select name="status" defaultValue={selectedRow.status || ''} style={{ ...inputStyle, appearance: 'none', background: '#fff' }}>
+                        {STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
+                      </select>
+                      <div style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none', color: '#64748b' }}>
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9" /></svg>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Updated By */}
+                  <div style={{ gridColumn: 'span 2' }}>
+                    <label style={labelStyle}>Updated By</label>
+                    <input name="updated_by" type="text" defaultValue={selectedRow.updated_by ?? ''} style={inputStyle} />
+                  </div>
+
+                  {/* Deleted By */}
+                  <div style={{ gridColumn: 'span 2' }}>
+                    <label style={labelStyle}>Deleted By</label>
+                    <input name="deleted_by" type="text" defaultValue={selectedRow.deleted_by ?? ''} readOnly style={{ ...inputStyle, background: '#f8fafc' }} />
+                  </div>
+
                 </div>
               </div>
 
-              {/* Modal Footer */}
               <div style={{ padding: '24px 32px 32px', display: 'flex', gap: 16, flexShrink: 0 }}>
                 <button type="button" onClick={() => setSelectedRow(null)}
-                  style={{ flex: 1, padding: '10px', borderRadius: 8, border: '1px solid #cbd5e1', background: '#f8fafc', fontSize: 14, fontWeight: 600, color: '#1e293b', cursor: 'pointer' }}>Cancel</button>
+                  style={{ flex: 1, padding: '10px', borderRadius: 8, border: '1px solid #cbd5e1', background: '#f8fafc', fontSize: 14, fontWeight: 600, color: '#1e293b', cursor: 'pointer' }}>
+                  Cancel
+                </button>
                 <button type="submit"
                   style={{ flex: 1, padding: '10px', borderRadius: 8, border: 'none', background: '#2563eb', color: '#fff', fontSize: 14, fontWeight: 700, cursor: 'pointer', boxShadow: '0 5px 10px rgba(37,99,235,0.35)' }}
                   onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.background = '#1d4ed8'; }}
                   onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = '#2563eb'; }}
-                >Update Record</button>
+                >
+                  Update Record
+                </button>
               </div>
             </form>
           </div>
         </div>
       )}
 
+      {/* ── Add Modal ──────────────────────────────────────────────── */}
       {showAddModal && (
         <div style={{
           position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
           background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center',
-          justifyContent: 'center', zIndex: 99999, backdropFilter: 'blur(3px)'
+          justifyContent: 'center', zIndex: 99999, backdropFilter: 'blur(3px)',
         }} onClick={() => setShowAddModal(false)}>
           <div style={{
-            background: '#fff', width: '95%', maxWidth: 500, borderRadius: 16,
+            background: '#fff', width: '95%', maxWidth: 520, borderRadius: 16,
             display: 'flex', flexDirection: 'column', maxHeight: '90vh',
             overflow: 'hidden', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)',
           }} onClick={e => e.stopPropagation()}>
-            {/* Modal Header */}
             <div style={{ padding: '18px 28px 14px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0, background: 'linear-gradient(90deg, #1e40af 0%, #2563eb 100%)' }}>
-              <h3 style={{ margin: 0, fontSize: 20, fontWeight: 700, color: '#fff' }}>Add New Checklist</h3>
+              <h3 style={{ margin: 0, fontSize: 20, fontWeight: 700, color: '#fff' }}>Add New Party</h3>
               <button onClick={() => setShowAddModal(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 24, color: '#fff' }}>&times;</button>
             </div>
 
             <form onSubmit={(e) => handleSave(e)} style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
-              {/* Modal Scrollable Body */}
               <div style={{ padding: '0 32px', flex: 1, overflowY: 'auto', minHeight: 0 }}>
                 <div style={{ height: 1.5, background: '#f1f5f9', margin: '0 -32px 24px' }} />
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px 24px', paddingBottom: 24 }}>
-                  {[
-                    { l: 'Checklist Name', n: 'checklist_name', p: 'Enter name...', span2: true },
-                    { l: 'Checklist Type', n: 'checklist_type', p: 'Standard' },
-                    { l: 'Category', n: 'checklist_category', p: 'Claim Processing' },
-                    { l: 'When Required', n: 'when_required', p: 'Always' },
-                    { l: 'Checklist Version', n: 'checklist_version', p: 'V1' },
-                    { l: 'Effective Date', n: 'effective_start_date', p: 'YYYY-MM-DD', type: 'date' },
-                    { l: 'End Date', n: 'effective_end_date', p: 'YYYY-MM-DD', type: 'date' },
-                    { l: 'Status', n: 'status', p: 'ACTIVE', isStatus: true },
-                  ].map(item => (
-                    <div key={item.l} style={{ gridColumn: item.span2 ? 'span 2' : 'auto' }}>
-                      <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#334155', marginBottom: 8 }}>{item.l}</label>
-                      {item.isStatus ? (
-                        <div style={{ position: 'relative' }}>
-                          <select name={item.n} style={{ width: '100%', padding: '10px 14px', fontSize: 13, border: '1px solid #cbd5e1', borderRadius: 8, outline: 'none', color: '#1e293b', appearance: 'none', background: '#fff' }}>
-                            {STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
-                          </select>
-                          <div style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none', color: '#64748b' }}>
-                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9" /></svg>
-                          </div>
-                        </div>
-                      ) : (
-                        <input name={item.n} type={item.type || "text"} placeholder={item.p} style={{ width: '100%', padding: '10px 14px', fontSize: 13, border: '1px solid #cbd5e1', borderRadius: 8, outline: 'none', color: '#1e293b' }} />
-                      )}
+
+                  {/* Party Type */}
+                  <div>
+                    <label style={labelStyle}>Party Type</label>
+                    <div style={{ position: 'relative' }}>
+                      <select name="party_type" style={{ ...inputStyle, appearance: 'none', background: '#fff' }}>
+                        <option value="">Select type...</option>
+                        {PARTY_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
+                      </select>
+                      <div style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none', color: '#64748b' }}>
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9" /></svg>
+                      </div>
                     </div>
-                  ))}
-                  <div style={{ gridColumn: 'span 2' }}>
-                    <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#334155', marginBottom: 8 }}>Description</label>
-                    <textarea name="checklist_description" rows={3} placeholder="Enter description..." style={{ width: '100%', padding: '10px 14px', fontSize: 13, border: '1px solid #cbd5e1', borderRadius: 8, outline: 'none', resize: 'none', color: '#1e293b' }} />
                   </div>
+
+                  {/* Gender */}
+                  <div>
+                    <label style={labelStyle}>Gender</label>
+                    <div style={{ position: 'relative' }}>
+                      <select name="gender" style={{ ...inputStyle, appearance: 'none', background: '#fff' }}>
+                        <option value="">Select gender...</option>
+                        {GENDERS.map(g => <option key={g} value={g}>{g}</option>)}
+                      </select>
+                      <div style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none', color: '#64748b' }}>
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9" /></svg>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* First Name */}
+                  <div>
+                    <label style={labelStyle}>First Name</label>
+                    <input name="first_name" type="text" placeholder="Enter first name..." style={inputStyle} />
+                  </div>
+
+                  {/* Last Name */}
+                  <div>
+                    <label style={labelStyle}>Last Name</label>
+                    <input name="last_name" type="text" placeholder="Enter last name..." style={inputStyle} />
+                  </div>
+
+                  {/* Date of Birth */}
+                  <div>
+                    <label style={labelStyle}>Date of Birth</label>
+                    <input name="date_of_birth" type="date" style={inputStyle} />
+                  </div>
+
+                  {/* Contact Number */}
+                  <div>
+                    <label style={labelStyle}>Contact Number</label>
+                    <input name="contact_number" type="text" placeholder="Enter contact..." style={inputStyle} />
+                  </div>
+
+                  {/* Email */}
+                  <div>
+                    <label style={labelStyle}>Email</label>
+                    <input name="email" type="email" placeholder="Enter email..." style={inputStyle} />
+                  </div>
+
+                  {/* National ID */}
+                  <div>
+                    <label style={labelStyle}>National ID</label>
+                    <input name="national_id" type="text" placeholder="Enter national ID..." style={inputStyle} />
+                  </div>
+
+                  {/* SSN */}
+                  <div>
+                    <label style={labelStyle}>SSN</label>
+                    <input name="ssn" type="text" placeholder="Enter SSN..." style={inputStyle} />
+                  </div>
+
+                  {/* Version */}
+                  <div>
+                    <label style={labelStyle}>Version</label>
+                    <input name="version" type="number" placeholder="1" style={inputStyle} />
+                  </div>
+
+                  {/* Address - span 2 */}
+                  <div style={{ gridColumn: 'span 2' }}>
+                    <label style={labelStyle}>Address</label>
+                    <textarea name="address" rows={2} placeholder="Enter address..." style={{ ...inputStyle, resize: 'none' }} />
+                  </div>
+
+                  {/* Effective Date */}
+                  <div>
+                    <label style={labelStyle}>Effective Date</label>
+                    <input name="effective_start_date" type="date" style={inputStyle} />
+                  </div>
+
+                  {/* End Date */}
+                  <div>
+                    <label style={labelStyle}>End Date</label>
+                    <input name="effective_end_date" type="date" style={inputStyle} />
+                  </div>
+
+                  {/* Status */}
+                  <div style={{ gridColumn: 'span 2' }}>
+                    <label style={labelStyle}>Status</label>
+                    <div style={{ position: 'relative' }}>
+                      <select name="status" style={{ ...inputStyle, appearance: 'none', background: '#fff' }}>
+                        {STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
+                      </select>
+                      <div style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none', color: '#64748b' }}>
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9" /></svg>
+                      </div>
+                    </div>
+                  </div>
+
                 </div>
               </div>
 
-              {/* Modal Footer */}
               <div style={{ padding: '24px 32px 32px', display: 'flex', gap: 16, flexShrink: 0 }}>
                 <button type="button" onClick={() => setShowAddModal(false)}
-                  style={{ flex: 1, padding: '10px', borderRadius: 8, border: '1px solid #cbd5e1', background: '#f8fafc', fontSize: 14, fontWeight: 600, color: '#1e293b', cursor: 'pointer' }}>Cancel</button>
+                  style={{ flex: 1, padding: '10px', borderRadius: 8, border: '1px solid #cbd5e1', background: '#f8fafc', fontSize: 14, fontWeight: 600, color: '#1e293b', cursor: 'pointer' }}>
+                  Cancel
+                </button>
                 <button type="submit"
                   style={{ flex: 1, padding: '10px', borderRadius: 8, border: 'none', background: '#2563eb', color: '#fff', fontSize: 14, fontWeight: 700, cursor: 'pointer', boxShadow: '0 5px 10px rgba(37,99,235,0.35)' }}
                   onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.background = '#1d4ed8'; }}
                   onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = '#2563eb'; }}
-                >Save Checklist</button>
+                >
+                  Save Party
+                </button>
               </div>
             </form>
           </div>
         </div>
       )}
 
-      {/* Delete Confirmation Modal */}
+      {/* ── Delete Confirmation Modal ───────────────────────────────── */}
       {confirmDelete && (
         <div style={{
           position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
           background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center',
-          justifyContent: 'center', zIndex: 99999, backdropFilter: 'blur(3px)'
+          justifyContent: 'center', zIndex: 99999, backdropFilter: 'blur(3px)',
         }} onClick={() => setConfirmDelete(null)}>
           <div style={{
             background: '#fff', width: '90%', maxWidth: 400, borderRadius: 12,
-            padding: 24, boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1)', textAlign: 'center'
+            padding: 24, boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1)', textAlign: 'center',
           }} onClick={e => e.stopPropagation()}>
             <div style={{
               width: 50, height: 50, borderRadius: '50%', background: '#fee2e2', color: '#b91c1c',
-              display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px', fontSize: 24
+              display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px', fontSize: 24,
             }}>!</div>
             <h3 style={{ margin: '0 0 8px', fontSize: 18, fontWeight: 700, color: '#0f172a' }}>Confirm Deletion</h3>
             <p style={{ margin: '0 0 24px', fontSize: 14, color: '#64748b' }}>Are you sure you want to delete this record? This action cannot be undone.</p>
             <div style={{ display: 'flex', gap: 12, justifyContent: 'center' }}>
               <button onClick={() => setConfirmDelete(null)}
-                style={{ flex: 1, padding: '10px', borderRadius: 6, border: '1px solid #cbd5e1', background: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>Cancel</button>
+                style={{ flex: 1, padding: '10px', borderRadius: 6, border: '1px solid #cbd5e1', background: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
+                Cancel
+              </button>
               <button onClick={() => handleDelete(confirmDelete)}
-                style={{ flex: 1, padding: '10px', borderRadius: 6, border: 'none', background: '#b91c1c', color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>Delete Record</button>
+                style={{ flex: 1, padding: '10px', borderRadius: 6, border: 'none', background: '#b91c1c', color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
+                Delete Record
+              </button>
             </div>
           </div>
         </div>
       )}
 
-      {/* Upload Excel Modal */}
+      {/* ── Upload Excel Modal ─────────────────────────────────────── */}
       {showUploadModal && (
         <div style={{
           position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
           background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center',
-          justifyContent: 'center', zIndex: 99999, backdropFilter: 'blur(3px)'
+          justifyContent: 'center', zIndex: 99999, backdropFilter: 'blur(3px)',
         }} onClick={() => setShowUploadModal(false)}>
           <div style={{
             background: '#fff', width: '95%', maxWidth: 560, borderRadius: 16,
-            boxShadow: '0 20px 35px -10px rgba(0,0,0,0.2)', textAlign: 'left', overflow: 'hidden'
+            boxShadow: '0 20px 35px -10px rgba(0,0,0,0.2)', overflow: 'hidden',
           }} onClick={e => e.stopPropagation()}>
             <div style={{ padding: '24px 28px 20px', borderBottom: '1px solid #e2e8f0' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <h3 style={{ margin: 0, fontSize: 22, fontWeight: 700, color: '#0f172a' }}>Upload Excel File</h3>
                 <button onClick={() => setShowUploadModal(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 21, color: '#64748b' }}>&times;</button>
               </div>
-              {/* <p style={{ margin: '10px 0 0', fontSize: 14, color: '#475569' }}>
-                Upload an Excel or CSV file to bulk import checklist data. Make sure your file follows the template format. Scheme code: <strong>SCM001</strong>
-              </p> */}
             </div>
 
             <input ref={fileRef} type="file" accept=".xlsx,.xls,.csv" style={{ display: 'none' }}
               onChange={(e) => {
                 const file = e.target.files?.[0];
-                if (file) {
-                  setUploadedFile(file);
-                  showToast(`Selected file: ${file.name}`);
-                }
+                if (file) { setUploadedFile(file); showToast(`Selected file: ${file.name}`); }
               }}
             />
 
@@ -623,18 +842,16 @@ export default function Tab1() {
               onDragOver={(e) => { e.preventDefault(); setDragActive(true); }}
               onDragLeave={(e) => { e.preventDefault(); setDragActive(false); }}
               onDrop={(e) => {
-                e.preventDefault();
-                setDragActive(false);
+                e.preventDefault(); setDragActive(false);
                 const file = e.dataTransfer.files?.[0];
-                if (file) {
-                  setUploadedFile(file);
-                  showToast(`Selected file: ${file.name}`);
-                }
+                if (file) { setUploadedFile(file); showToast(`Selected file: ${file.name}`); }
               }}
               onClick={() => fileRef.current?.click()}
               style={{
-                margin: '22px', padding: '26px', border: `2px dashed ${dragActive ? '#22c55e' : '#9ca3af'}`,
-                borderRadius: 12, background: dragActive ? '#f0fdf4' : '#f8fafc', cursor: 'pointer', textAlign: 'center'
+                margin: '22px', padding: '26px',
+                border: `2px dashed ${dragActive ? '#22c55e' : '#9ca3af'}`,
+                borderRadius: 12, background: dragActive ? '#f0fdf4' : '#f8fafc',
+                cursor: 'pointer', textAlign: 'center',
               }}
             >
               <div style={{ fontSize: 32, marginBottom: 10, color: '#60a5fa' }}><UploadIcon /></div>
@@ -647,12 +864,11 @@ export default function Tab1() {
 
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, padding: '14px 22px 20px', borderTop: '1px solid #e2e8f0' }}>
               <button onClick={() => { setUploadedFile(null); setShowUploadModal(false); }}
-                style={{ padding: '10px 14px', borderRadius: 8, border: '1px solid #0f172a', background: '#fff', color: '#0f172a', fontWeight: 700, cursor: 'pointer' }}>Cancel</button>
+                style={{ padding: '10px 14px', borderRadius: 8, border: '1px solid #0f172a', background: '#fff', color: '#0f172a', fontWeight: 700, cursor: 'pointer' }}>
+                Cancel
+              </button>
               <button onClick={() => {
-                if (!uploadedFile) {
-                  showToast('Please choose a file first');
-                  return;
-                }
+                if (!uploadedFile) { showToast('Please choose a file first'); return; }
                 showToast(`Uploading ${uploadedFile.name}...`);
                 // TODO: add actual upload API call here
                 setShowUploadModal(false);

@@ -7,7 +7,7 @@ import Sidebar from '../components/Sidebar';
 // Dynamically import each tab — tabs live in ./Master_death_claim/
 const tabComponents: Record<string, React.ComponentType> = {
   'tab-1': dynamic(() => import('./Master_death_claim/checklists')),
-  'tab-2': dynamic(() => import('./Master_death_claim/Tab2')),
+  'tab-2': dynamic(() => import('./Master_death_claim/claimparty')),
   'tab-3': dynamic(() => import('./Master_death_claim/Tab3')),
   'tab-4': dynamic(() => import('./Master_death_claim/Tab4')),
   'tab-5': dynamic(() => import('./Master_death_claim/Tab5')),
@@ -31,14 +31,20 @@ const TAB_LABELS: Record<string, string> = {
 
 export default function MasterPage() {
   const [activeTab, setActiveTab] = useState<string | null>('tab-1');
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
   const ActiveComponent = activeTab ? tabComponents[activeTab] : null;
 
   return (
     <div style={{ display: 'flex', minHeight: '100vh', background: '#f1f5f9' }}>
-      <Sidebar activeTab={activeTab} onSelectTab={setActiveTab} />
+      <Sidebar
+        activeTab={activeTab}
+        onSelectTab={setActiveTab}
+        collapsed={sidebarCollapsed}
+        onToggleCollapse={() => setSidebarCollapsed((v) => !v)}
+      />
 
-      <main style={{ flex: 1, marginLeft: '220px', padding: '16px', minHeight: '100vh', background: '#f8fafc' }}>
+      <main style={{ flex: 1, marginLeft: sidebarCollapsed ? '70px' : '220px', padding: '16px', minHeight: '100vh', background: '#f8fafc' }}>
         {/* Tab Content Wrapper */}
         <div style={{
           background: 'white',
