@@ -17,11 +17,9 @@ const COLUMNS = [
   { key: 'gender', label: 'Gender' },
   { key: 'date_of_birth', label: 'Date of Birth' },
   { key: 'contact_number', label: 'Contact' },
-  { key: 'email', label: 'Email' },
   { key: 'national_id', label: 'National ID' },
   { key: 'effective_start_date', label: 'Effective Date' },
   { key: 'effective_end_date', label: 'End Date' },
-  { key: 'version', label: 'Version' },
   { key: 'status', label: 'Status' },
 ];
 
@@ -380,11 +378,9 @@ export default function PartyTab() {
                     <td style={tdBase}>{formatGender(row.gender)}</td>
                     <td style={tdBase}>{formatDate(row.date_of_birth)}</td>
                     <td style={tdBase}>{row.contact_number}</td>
-                    <td style={{ ...tdBase, maxWidth: 180, overflow: 'hidden', textOverflow: 'ellipsis' }} title={row.email}>{row.email}</td>
                     <td style={tdBase}>{row.national_id}</td>
                     <td style={tdBase}>{formatDate(row.effective_start_date)}</td>
                     <td style={tdBase}>{formatDate(row.effective_end_date)}</td>
-                    <td style={tdBase}>{row.version ?? '-'}</td>
                     <td style={{ ...tdBase }}>
                       <span style={{
                         display: 'inline-block', padding: '3px 10px',
